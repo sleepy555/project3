@@ -8,6 +8,7 @@ namespace project3
     public partial class Form1 : Form
     {
         SqlConnection con;
+        int selectedStudentId = -1;
 
         public Form1()
         {
@@ -17,22 +18,39 @@ namespace project3
                 @"Data Source=DESKTOP-4A2FR2S\SQLEXPRESS;
                   Initial Catalog=student;
                   Integrated Security=True;
-                  Trust Server Certificate=True"
-            );
+                  Trust Server Certificate=True");
 
-            // IMPORTANT SETTINGS
             dataGridView1.AllowUserToAddRows = false;
             dataGridView1.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
             dataGridView1.MultiSelect = false;
+            dataGridView1.ReadOnly = false;
         }
 
-        // 🔹 FORM LOAD
+        // ================= FORM LOAD =================
         private void Form1_Load(object sender, EventArgs e)
         {
             DisplayStudents();
+            updatebtn.Enabled = false;
+            delbtnn.Enabled = false;
+            this.BackColor = Color.FromArgb(230, 245, 255); // sky blue
+
+            label1.ForeColor = Color.FromArgb(40, 70, 120);
+            label2.ForeColor = Color.FromArgb(40, 70, 120);
+            label3.ForeColor = Color.FromArgb(40, 70, 120);
+            label4.ForeColor = Color.FromArgb(40, 70, 120);
+            label5.ForeColor = Color.FromArgb(40, 70, 120);
+            label6.ForeColor = Color.FromArgb(40, 70, 120);
+
+            insertbtn.BackColor = Color.White;
+            updatebtn.BackColor = Color.White;
+            Clrbtn.BackColor = Color.White;
+
+            delbtnn.BackColor = Color.FromArgb(255, 159, 67); // orange pop
+            delbtnn.ForeColor = Color.White;
+
         }
 
-        // 🔹 DISPLAY DATA
+        // ================= DISPLAY =================
         private void DisplayStudents()
         {
             try
@@ -48,7 +66,7 @@ namespace project3
             }
         }
 
-        // 🔹 CLEAR TEXTBOXES
+        // ================= CLEAR =================
         private void ResetFields()
         {
             Rollnotxt.Clear();
@@ -56,9 +74,13 @@ namespace project3
             Divtxt.Clear();
             Addresstxt.Clear();
             Contacttxt.Clear();
+
+            selectedStudentId = -1;
+            updatebtn.Enabled = false;
+            delbtnn.Enabled = false;
         }
 
-        // 🔹 INSERT
+        // ================= INSERT =================
         private void insertbtn_Click(object sender, EventArgs e)
         {
             try
@@ -69,11 +91,11 @@ namespace project3
                     @"INSERT INTO STU (RollNo, Sname, Division, SAddress, Contact)
                       VALUES (@RollNo, @Sname, @Division, @SAddress, @Contact)", con);
 
-                cmd.Parameters.AddWithValue("@RollNo", Rollnotxt.Text);
-                cmd.Parameters.AddWithValue("@Sname", Nametxt.Text);
-                cmd.Parameters.AddWithValue("@Division", Divtxt.Text);
-                cmd.Parameters.AddWithValue("@SAddress", Addresstxt.Text);
-                cmd.Parameters.AddWithValue("@Contact", Contacttxt.Text);
+                cmd.Parameters.Add("@RollNo", SqlDbType.Int).Value = int.Parse(Rollnotxt.Text);
+                cmd.Parameters.Add("@Sname", SqlDbType.VarChar).Value = Nametxt.Text;
+                cmd.Parameters.Add("@Division", SqlDbType.VarChar).Value = Divtxt.Text;
+                cmd.Parameters.Add("@SAddress", SqlDbType.VarChar).Value = Addresstxt.Text;
+                cmd.Parameters.Add("@Contact", SqlDbType.VarChar).Value = Contacttxt.Text;
 
                 cmd.ExecuteNonQuery();
 
@@ -91,41 +113,42 @@ namespace project3
             }
         }
 
-        // 🔹 UPDATE
-        private void Updatebtn_Click(object sender, EventArgs e)
+        // ================= UPDATE =================
+        private void updatebtn_Click(object sender, EventArgs e)
         {
-            if (dataGridView1.SelectedRows.Count == 0)
+            if (selectedStudentId == -1)
             {
-                MessageBox.Show("Please double-click a student to update");
+                MessageBox.Show("Please select a student first");
                 return;
             }
-
-            int studentId = Convert.ToInt32(
-                dataGridView1.SelectedRows[0].Cells["StudentId"].Value);
 
             try
             {
                 con.Open();
 
                 SqlCommand cmd = new SqlCommand(
-                    @"UPDATE STU SET 
-                        RollNo=@RollNo,
-                        Sname=@Sname,
-                        Division=@Division,
-                        SAddress=@SAddress,
-                        Contact=@Contact
-                      WHERE StudentId=@StudentId", con);
+                    @"UPDATE STU SET
+                      RollNo = @RollNo,
+                      Sname = @Sname,
+                      Division = @Division,
+                      SAddress = @SAddress,
+                      Contact = @Contact
+                      WHERE StudentId = @StudentId", con);
 
-                cmd.Parameters.AddWithValue("@StudentId", studentId);
-                cmd.Parameters.AddWithValue("@RollNo", Rollnotxt.Text);
-                cmd.Parameters.AddWithValue("@Sname", Nametxt.Text);
-                cmd.Parameters.AddWithValue("@Division", Divtxt.Text);
-                cmd.Parameters.AddWithValue("@SAddress", Addresstxt.Text);
-                cmd.Parameters.AddWithValue("@Contact", Contacttxt.Text);
+                cmd.Parameters.Add("@StudentId", SqlDbType.Int).Value = selectedStudentId;
+                cmd.Parameters.Add("@RollNo", SqlDbType.Int).Value = int.Parse(Rollnotxt.Text);
+                cmd.Parameters.Add("@Sname", SqlDbType.VarChar).Value = Nametxt.Text;
+                cmd.Parameters.Add("@Division", SqlDbType.VarChar).Value = Divtxt.Text;
+                cmd.Parameters.Add("@SAddress", SqlDbType.VarChar).Value = Addresstxt.Text;
+                cmd.Parameters.Add("@Contact", SqlDbType.VarChar).Value = Contacttxt.Text;
 
-                cmd.ExecuteNonQuery();
+                int rows = cmd.ExecuteNonQuery();
 
-                MessageBox.Show("Student updated successfully");
+                if (rows > 0)
+                    MessageBox.Show("Student updated successfully");
+                else
+                    MessageBox.Show("Update failed");
+
                 DisplayStudents();
                 ResetFields();
             }
@@ -139,29 +162,31 @@ namespace project3
             }
         }
 
-        // 🔹 DELETE
-        private void Delbtnn_Click(object sender, EventArgs e)
+        // ================= DELETE =================
+        private void delbtnn_Click(object sender, EventArgs e)
         {
-            if (dataGridView1.SelectedRows.Count == 0)
+            if (selectedStudentId == -1)
             {
                 MessageBox.Show("Please select a student to delete");
                 return;
             }
 
-            int studentId = Convert.ToInt32(
-                dataGridView1.SelectedRows[0].Cells["StudentId"].Value);
-
             try
             {
                 con.Open();
 
                 SqlCommand cmd = new SqlCommand(
-                    "DELETE FROM STU WHERE StudentId=@StudentId", con);
+                    "DELETE FROM STU WHERE StudentId = @StudentId", con);
 
-                cmd.Parameters.AddWithValue("@StudentId", studentId);
-                cmd.ExecuteNonQuery();
+                cmd.Parameters.Add("@StudentId", SqlDbType.Int).Value = selectedStudentId;
 
-                MessageBox.Show("Student deleted successfully");
+                int rows = cmd.ExecuteNonQuery();
+
+                if (rows > 0)
+                    MessageBox.Show("Student deleted successfully");
+                else
+                    MessageBox.Show("Delete failed");
+
                 DisplayStudents();
                 ResetFields();
             }
@@ -175,65 +200,36 @@ namespace project3
             }
         }
 
-        // 🔹 DOUBLE CLICK → LOAD DATA INTO TEXTBOXES (KEY PART)
-        private void dataGridView1_CellDoubleClick(object sender, DataGridViewCellEventArgs e)
-        {
-            if (e.RowIndex >= 0)
-            {
-                DataGridViewRow row = dataGridView1.Rows[e.RowIndex];
-
-                Rollnotxt.Text = row.Cells["RollNo"].Value.ToString();
-                Nametxt.Text = row.Cells["Sname"].Value.ToString();
-                Divtxt.Text = row.Cells["Division"].Value.ToString();
-                Addresstxt.Text = row.Cells["SAddress"].Value.ToString();
-                Contacttxt.Text = row.Cells["Contact"].Value.ToString();
-            }
-        }
-
-        // 🔹 CLEAR BUTTON
+        // ================= CLEAR BUTTON =================
         private void Clrbtn_Click(object sender, EventArgs e)
         {
             ResetFields();
         }
 
+        // ================= GRID CLICK =================
+        private void dataGridView1_CellClick(object sender, DataGridViewCellEventArgs e)
+        {
+            if (e.RowIndex >= 0)
+            {
+                DataGridViewRow row = dataGridView1.Rows[e.RowIndex];
+
+                selectedStudentId = Convert.ToInt32(row.Cells[0].Value);
+
+                Rollnotxt.Text = row.Cells[1].Value?.ToString();
+                Nametxt.Text = row.Cells[2].Value?.ToString();
+                Divtxt.Text = row.Cells[3].Value?.ToString();
+                Addresstxt.Text = row.Cells[4].Value?.ToString();
+                Contacttxt.Text = row.Cells[5].Value?.ToString();
+
+                updatebtn.Enabled = true;
+                delbtnn.Enabled = true;
+            }
+        }
+
+        // ================= CLOSE =================
         private void cross_Click(object sender, EventArgs e)
         {
             this.Close();
-        }
-
-        private void delbtnn_Click_1(object sender, EventArgs e)
-        {
-            if (dataGridView1.SelectedRows.Count == 0)
-            {
-                MessageBox.Show("Please select a student to delete");
-                return;
-            }
-
-            int studentId = Convert.ToInt32(
-                dataGridView1.SelectedRows[0].Cells["StudentId"].Value);
-
-            try
-            {
-                con.Open();
-
-                SqlCommand cmd = new SqlCommand(
-                    "DELETE FROM STU WHERE StudentId=@StudentId", con);
-
-                cmd.Parameters.AddWithValue("@StudentId", studentId);
-                cmd.ExecuteNonQuery();
-
-                MessageBox.Show("Student deleted successfully");
-                DisplayStudents();
-                ResetFields();
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show(ex.Message);
-            }
-            finally
-            {
-                con.Close();
-            }
         }
     }
 }
